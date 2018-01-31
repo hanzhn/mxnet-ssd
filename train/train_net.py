@@ -282,8 +282,8 @@ def train_net(network, train_path, num_classes, batch_size,
     # visualize net - both train and test
     net_visualization(net=net, network=network,data_shape=data_shape[2],
                       output_dir=os.path.dirname(prefix), train=True)
-    net_visualization(net=None, network=network, data_shape=data_shape[2],
-                      output_dir=os.path.dirname(prefix), train=False, num_classes=num_classes)
+    #net_visualization(net=None, network=network, data_shape=data_shape[2],
+    #                  output_dir=os.path.dirname(prefix), train=False, num_classes=num_classes)
 
     # init training module
     mod = mx.mod.Module(net, label_names=('label',), logger=logger, context=ctx,

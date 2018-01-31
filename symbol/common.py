@@ -1,6 +1,6 @@
 import mxnet as mx
 import numpy as np
-
+    
 def conv_act_layer(from_layer, name, num_filter, kernel=(1,1), pad=(0,0), \
     stride=(1,1), act_type="relu", use_batchnorm=False):
     """
@@ -78,6 +78,58 @@ def legacy_conv_act_layer(from_layer, name, num_filter, kernel=(1,1), pad=(0,0),
         relu = mx.symbol.BatchNorm(data=relu, name="bn{}".format(name))
     return conv, relu
 
+def multi_feature_fuse(from_layers, num_left = 0):
+    """Wrapper function to extract features from base network, attaching extra
+    layers and SSD specific layers
+
+    Parameters
+    ----------
+    from_layers : list of mx.symbol
+        generate feature fuse from layers
+    num_filters : list of int
+        number of filters for extra layers, you can use -1 for extracted features,
+        however, if normalization and scale is applied, the number of filter for
+        that layer must be provided.
+        For example:
+        num_filters = [512, -1, 512, 256, 256, 256]
+    strides : list of int
+        strides for the 3x3 convolution appended, -1 can be used for extracted
+        feature layers
+    pads : list of int
+        paddings for the 3x3 convolution, -1 can be used for extracted layers
+    min_filter : int
+        minimum number of filters used in 1x1 convolution
+
+    Returns
+    -------
+    list of mx.Symbols
+
+    """
+    # arguments check
+    assert len(from_layers) > 0
+    from_layers.reverse()
+    
+    deeper_layer = None
+    layers = []
+    for k, from_layer in enumerate(from_layers):      
+        if k <= num_left:
+            # has no layers to fuse together            
+            layer = from_layer
+            layers.append(layer)
+            deeper_layer = layer
+            print(deeper_layer)
+        else:
+            #weights = mx.symbol.Variable(name="up_{}_deconv_weights".format(deeper_layer.name), init=mx.init.Bilinear, attr={'__lr_mult__': '0.0'})##########
+            #deconv = mxnet.symbol.Deconvolution(data = deeper_layer, weight=weights, kernel=(3,3), stride=(1,1), pad=(0,0), num_filter=256, num_group=256, no_bias = True, name = 'up_{}' % (deeper_layer.name))
+            deconv = mx.symbol.UpSampling(deeper_layer, scale = 2, num_filter = 256, sample_type = 'bilinear')
+            concat = mx.symbol.concat(deconv, from_layer, dim=1)
+            conv_3x3 = conv_act_layer(concat, 'fuse_'+from_layer.name, num_filter=256, kernel=(3, 3), pad=(1, 1), stride=(1, 1), act_type='relu')
+            layers.append(conv_3x3)
+            deeper_layer = conv_3x3
+            print(deeper_layer)
+        layers.reverse()
+    return layers
+      
 def multi_layer_feature(body, from_layers, num_filters, strides, pads, min_filter=128):
     """Wrapper function to extract features from base network, attaching extra
     layers and SSD specific layers
@@ -134,7 +186,7 @@ def multi_layer_feature(body, from_layers, num_filters, strides, pads, min_filte
                 num_filter, kernel=(3, 3), pad=(p, p), stride=(s, s), act_type='relu')
             layers.append(conv_3x3)
     return layers
-
+    
 def multibox_layer(from_layers, num_classes, sizes=[.2, .95],
                     ratios=[1], normalization=-1, num_channels=[],
                     clip=False, interm_layer=0, steps=[]):

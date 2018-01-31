@@ -1,5 +1,5 @@
 import mxnet as mx
-from common import multi_layer_feature, multibox_layer
+from common import multi_layer_feature, multibox_layer, multi_feature_fuse
 
 
 def import_module(module_name):
@@ -68,6 +68,7 @@ def get_symbol_train(network, num_classes, from_layers, num_filters, strides, pa
     layers = multi_layer_feature(body, from_layers, num_filters, strides, pads,
         min_filter=min_filter)
 
+    layers = multi_feature_fuse(layers, num_left = 2)
     loc_preds, cls_preds, anchor_boxes = multibox_layer(layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
         num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
@@ -156,6 +157,7 @@ def get_symbol(network, num_classes, from_layers, num_filters, sizes, ratios,
     layers = multi_layer_feature(body, from_layers, num_filters, strides, pads,
         min_filter=min_filter)
 
+    layers = multi_feature_fuse(layers, num_left = 2)
     loc_preds, cls_preds, anchor_boxes = multibox_layer(layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
         num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
